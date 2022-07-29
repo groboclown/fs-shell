@@ -67,7 +67,47 @@ WithOptional(command="shared_int", ifdef="USES_SHARED_INT",
 )
 
 
-WithAuxFor(commands=[shared_str, shared_int], ifdefs=[USES_SHARED_STR, USES_SHARED_INT],
+WithOptional(command="shared_itoa", ifdef="USES_SHARED_ITOA",
+
+
+// buffer must be global_itoa.  return should be stored in global_itoa_ptr
+char *shared_itoa(int value, char *buffer) {
+    // size of global_itoa == (3 * sizeof(int)) + 1, but we want to
+    // write to -1 first, so...
+    char *itoa_ptr = buffer + (3 * sizeof(int));
+    int is_negative = 0;
+    *itoa_ptr = '\0';
+    if (value < 0) {
+        is_negative = 1;
+        value = 0 - value;
+    }
+    // Do-while allows us to add the 0 if the value is zero.
+    do {
+        itoa_ptr -= sizeof(char);
+        *itoa_ptr = '0' + (value % 10);
+        value /= 10;
+    } while (value);
+    if (is_negative) {
+        itoa_ptr -= sizeof(char);
+        *itoa_ptr = '-';
+    }
+    return itoa_ptr;
+}
+
+
+    WithVirtualStep(enum="DO_NOT_USE_ITOA",
+
+        OnInit(
+            char global_itoa[(3 * sizeof(int)) + 1];
+            char *global_itoa_ptr;
+        )
+
+    )
+
+)
+
+
+WithAuxFor(commands=[shared_str, shared_int, shared_itoa], ifdefs=[USES_SHARED_STR, USES_SHARED_INT, USES_SHARED_ITOA],
 // Nothing extra here.
 )
 

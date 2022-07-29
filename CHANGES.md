@@ -1,8 +1,19 @@
 ## v4.0.0
 
-* (tbd)
+* [d72dc56](d72dc569173a90cedab6bcb4fae9b534c2798e6c)
     * Switched argument and input parsing to a unified front.  This will allow for commands such as `envsubst` to be more easily implemented.
-    * Switched quoting to now be re-entrant.  The quote characters are now starting with '[' and ending with ']'.  This is a non-standard formatting, but allows interesting things like better support of the `exec` command.
+    * Switched quoting to now be re-entrant.  The quote characters are now starting with '[' and ending with ']'.  This is a non-standard formatting, but allows interesting things like better support of the `exec` command. *This may be '(' and ')' before 4.0 releases.*
+* (tbd)
+    * Added `spawn` command.  Including this command in the executable forces the environment variable usage to be enabled, but doesn't force environment variable parsing.
+    * Added `wait-pid` command.  Including this command in the executable forces the environment variable usage to be enabled, but doesn't force environment variable parsing.
+    * Added `kill-pid` command.
+    * Added `export` command.  Including this command in the executable forces the environment variable usage to be enabled, but doesn't force environment variable parsing.
+    * Altered `exec` to take a single argument, and if that command doesn't exist or isn't executable, tries to run the next argument, and so on.
+    * Added `subcmd` now that the quote parse rewriting has made it trivial.
+    * Added "conditional" command (`?:`) now that `subcmd` shows how easy it is to write this.
+    * Added `cd` command.
+    * Added `pwd` command.
+    * Modified the noop command to also be called `#` to support comment like structures, and `#!` to allow for running presh scripts natively.
 
 
 ## v3.0.0
@@ -17,7 +28,7 @@
     * Marked `REQUIRE_FULL_CMD` as a top-level Makefile flag.  Added tests for this flag, and added it to the version flags report and combination builds.
     * Added `ENVIRO_INPUT` as top-level Makefile flag.  Added it to the version flags report and combination builds.
     * Added environment variable parsing when the `ENVIRO_INPUT` flag is set (#11).
-* (tbd)
+* [ea4f744](ea4f74499c235c07ead248230c161d94e252078a)
     * Rebranded `fs-shell` as `precision-shell` (presh).
 
 

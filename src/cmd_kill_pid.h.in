@@ -19,33 +19,44 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
-AsOptional(command="chmod",
+AsOptional(command="kill-pid",
 
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <signal.h>
 
 #include "output.h"
 #include "globals.h"
 #include "helpers.h"
 
-WithNamedStep(enum="CHMOD__MODE", name="chmod",
+WithNamedStep(enum="KILL_PID_SIGNAL", name="kill-pid",
     OnArg(
-        LOG(":: using mode ");
+        LOG(":: killing with signal ");
         LOGLN(global_arg);
-        global_cmd = COMMAND_INDEX__CHMOD__RUN;
-        global_arg1_i = helper_arg_to_uint(global_arg, 8, 07777);
+        global_cmd = COMMAND_INDEX__KILL_PID;
+        global_arg1_i = helper_arg_to_uint(global_arg, 10, 0xffff);
         if (global_arg1_i < 0) {
-            LOG("::  - Bad base 8 number, or out of range\n");
-            global_cmd = COMMAND_INDEX__ERR;
             global_err = 1;
+            // Do not allow the command to kill.
+            global_cmd = COMMAND_INDEX__ERR;
         }
     )
 )
-WithVirtualStep(enum="CHMOD__RUN",
+WithVirtualStep(enum="KILL_PID",
     OnArg(
-        LOG(":: chmod on ");
+        LOG(":: killing PID ");
         LOGLN(global_arg);
-        global_err = chmod(global_arg, global_arg1_i);
+        global_arg2_i = helper_arg_to_uint(global_arg, 10, 0x7fffffff);
+        if (global_arg2_i < 0) {
+            global_err = 1;
+            // Allow more kills to happen
+        } else {
+            // This returns 0 on OK, and -1 on error.
+            // The command runner just checks, for each arg pass,
+            // if the global_err is non-zero.
+            global_err = kill(global_arg2_i, global_arg1_i);
+
+//printf("[kill debug] kill pid %d with signal %d returned %d\n", global_arg2_i, global_arg1_i, global_err);
+
+        }
     )
 )
 

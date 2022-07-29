@@ -118,33 +118,98 @@ SOFTWARE.
 #endif /* USES_SHARED_INT */
 
 
-#if defined(USES_SHARED_STR) || defined(USES_SHARED_INT)
+// Optional command shared_itoa
+
+#ifdef USES_SHARED_ITOA
+
+
+
+// buffer must be global_itoa.  return should be stored in global_itoa_ptr
+char *shared_itoa(int value, char *buffer) {
+    // size of global_itoa == (3 * sizeof(int)) + 1, but we want to
+    // write to -1 first, so...
+    char *itoa_ptr = buffer + (3 * sizeof(int));
+    int is_negative = 0;
+    *itoa_ptr = '\0';
+    if (value < 0) {
+        is_negative = 1;
+        value = 0 - value;
+    }
+    // Do-while allows us to add the 0 if the value is zero.
+    do {
+        itoa_ptr -= sizeof(char);
+        *itoa_ptr = '0' + (value % 10);
+        value /= 10;
+    } while (value);
+    if (is_negative) {
+        itoa_ptr -= sizeof(char);
+        *itoa_ptr = '-';
+    }
+    return itoa_ptr;
+}
+
+
+
+
+#define ENUM_LIST__SHARED_ITOA
+#define VIRTUAL_ENUM_LIST__SHARED_ITOA \
+            /* from cmd_shared_virtual.h.in:98 */ \
+            COMMAND_INDEX__DO_NOT_USE_ITOA,
+#define GLOBAL_VARDEF__SHARED_ITOA
+#define INITIALIZE__SHARED_ITOA \
+            /* from cmd_shared_virtual.h.in:100 */ \
+            char global_itoa[(3 * sizeof(int)) + 1]; \
+            char *global_itoa_ptr;
+#define STARTUP_CASE__SHARED_ITOA
+#define RUN_CASE__SHARED_ITOA
+#define REQUIRES_ADDL_ARG__SHARED_ITOA
+
+#else /* USES_SHARED_ITOA */
+
+#define ENUM_LIST__SHARED_ITOA
+#define VIRTUAL_ENUM_LIST__SHARED_ITOA
+#define GLOBAL_VARDEF__SHARED_ITOA
+#define INITIALIZE__SHARED_ITOA
+#define STARTUP_CASE__SHARED_ITOA
+#define RUN_CASE__SHARED_ITOA
+#define REQUIRES_ADDL_ARG__SHARED_ITOA
+#endif /* USES_SHARED_ITOA */
+
+
+#if defined(USES_SHARED_STR) || defined(USES_SHARED_INT) || defined(USES_SHARED_ITOA)
 
 // Nothing extra here.
 
 #define ENUM_LIST__SHARED_VIRTUAL \
             ENUM_LIST__SHARED_STR \
-            ENUM_LIST__SHARED_INT
+            ENUM_LIST__SHARED_INT \
+            ENUM_LIST__SHARED_ITOA
 #define VIRTUAL_ENUM_LIST__SHARED_VIRTUAL \
             VIRTUAL_ENUM_LIST__SHARED_STR \
-            VIRTUAL_ENUM_LIST__SHARED_INT
+            VIRTUAL_ENUM_LIST__SHARED_INT \
+            VIRTUAL_ENUM_LIST__SHARED_ITOA
 #define GLOBAL_VARDEF__SHARED_VIRTUAL \
             GLOBAL_VARDEF__SHARED_STR \
-            GLOBAL_VARDEF__SHARED_INT
+            GLOBAL_VARDEF__SHARED_INT \
+            GLOBAL_VARDEF__SHARED_ITOA
 #define INITIALIZE__SHARED_VIRTUAL \
             INITIALIZE__SHARED_STR \
-            INITIALIZE__SHARED_INT
+            INITIALIZE__SHARED_INT \
+            INITIALIZE__SHARED_ITOA
 #define STARTUP_CASE__SHARED_VIRTUAL \
             STARTUP_CASE__SHARED_STR \
-            STARTUP_CASE__SHARED_INT
+            STARTUP_CASE__SHARED_INT \
+            STARTUP_CASE__SHARED_ITOA
 #define RUN_CASE__SHARED_VIRTUAL \
             RUN_CASE__SHARED_STR \
-            RUN_CASE__SHARED_INT
+            RUN_CASE__SHARED_INT \
+            RUN_CASE__SHARED_ITOA
 #define REQUIRES_ADDL_ARG__SHARED_VIRTUAL \
             REQUIRES_ADDL_ARG__SHARED_STR \
-            REQUIRES_ADDL_ARG__SHARED_INT
+            REQUIRES_ADDL_ARG__SHARED_INT \
+            REQUIRES_ADDL_ARG__SHARED_ITOA
 
-#else /* defined(USES_SHARED_STR) || defined(USES_SHARED_INT) */
+#else /* defined(USES_SHARED_STR) || defined(USES_SHARED_INT) || defined(USES_SHARED_ITOA) */
 
 #define ENUM_LIST__SHARED_VIRTUAL
 #define VIRTUAL_ENUM_LIST__SHARED_VIRTUAL
@@ -153,7 +218,7 @@ SOFTWARE.
 #define STARTUP_CASE__SHARED_VIRTUAL
 #define RUN_CASE__SHARED_VIRTUAL
 #define REQUIRES_ADDL_ARG__SHARED_VIRTUAL
-#endif /* defined(USES_SHARED_STR) || defined(USES_SHARED_INT) */
+#endif /* defined(USES_SHARED_STR) || defined(USES_SHARED_INT) || defined(USES_SHARED_ITOA) */
 
 
 #endif /* _FS_SHELL__CMD_SHARED_VIRTUAL_ */

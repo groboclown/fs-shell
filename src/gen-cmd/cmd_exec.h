@@ -36,24 +36,11 @@ SOFTWARE.
 // Exec takes a single argument and parses it into arguments using the
 // input_loader.
 
-// Slurp up all remaining arguments up to command max.
-// global_arg: current argument
-// exec_argv: pointers to arguments.
-// exec_arg3: container for all arguments copied in.  exec_argv points into this.
-// global_arg1_i: position in exec_argv
-// global_arg2_i: character position in argv[global_arg1_i]
-// global_arg3_i: loop counter
-
 #include <stdlib.h>
 #include <stdio.h>
 #include "args.h"
 #include "output.h"
 #include "globals.h"
-
-// Number of arguments for exec
-#define MAX_EXEC_ARGS 1000
-// Number of characters, including trailing \0 for all the arguments concatenated together.
-#define MAX_EXEC_ARG_LEN (MAX_EXEC_ARGS * 100)
 
 
 #ifdef DEBUG
@@ -74,41 +61,33 @@ SOFTWARE.
 
 
 
-/* from cmd_exec.h.in:67 */
+/* from cmd_exec.h.in:54 */
 extern const char cmd_name_exec[];
 #define ENUM_LIST__EXEC \
-            /* from cmd_exec.h.in:67 */ \
+            /* from cmd_exec.h.in:54 */ \
             COMMAND_INDEX__EXEC,
 #define VIRTUAL_ENUM_LIST__EXEC
 #define GLOBAL_VARDEF__EXEC \
-            /* from cmd_exec.h.in:67 */ \
+            /* from cmd_exec.h.in:54 */ \
             const char cmd_name_exec[] = "exec";
 #define INITIALIZE__EXEC \
-            /* from cmd_exec.h.in:67 */ \
+            /* from cmd_exec.h.in:54 */ \
             command_list_names[COMMAND_INDEX__EXEC] = cmd_name_exec;
 #define STARTUP_CASE__EXEC
 #define RUN_CASE__EXEC \
     case COMMAND_INDEX__EXEC: \
-        /* from cmd_exec.h.in:67 */ \
-            /* from cmd_exec.h.in:69 */ \
+        /* from cmd_exec.h.in:54 */ \
+            /* from cmd_exec.h.in:56 */ \
         /* Split the arguments.*/ \
         SHARED_SPLIT__PARSE_ARG \
-        if (global_arg3_i <= 1) { \
-            /* No command to run*/ \
-            stderrP("ERROR no command\n"); \
-            /* Use "return" because the command is not expected to*/ \
-            /* keep the tool running.*/ \
-            return 1; \
-        } \
         EXEC_DEBUG_REPORT \
         /* This launches a new executable and terminates this one immediately.*/ \
         execvp(shared_split_argv[0], (char * const*) shared_split_argv); \
         /* If the code is still running at this point, then there was an error.*/ \
-        stderrP("ERROR exec failed to launch command "); \
-        stderrPLn(shared_split_argv[0]); \
-        /* Use "return" because the command is not expected to*/ \
-        /* keep the tool running.*/ \
-        return 1; \
+        /* Rather than returning, allow the next command argument to run.*/ \
+        /* Additionally, this will allow normal error reporting to report the problem.*/ \
+        global_err = 1; \
+        break; \
         break;
 #define REQUIRES_ADDL_ARG__EXEC
 

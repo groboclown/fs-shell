@@ -21,30 +21,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-AsOptional(command="noop",
+AsOptional(command="export",
 
-    WithNamedStep(enum="NOOP__NAMED", name="noop",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+WithNamedStep(enum="EXPORT", name="export",
+    OnCmd(
+        // Call the shared store to capture the next argument.
+        global_cmd = COMMAND_INDEX__SHARED_STR;
+        global_arg3_i = COMMAND_INDEX__EXPORT;
     )
 
-    // Allow for # style comments... sort of.  Beware the ; and &&.
-    // # [blah] would work okay here.
-    WithNamedStep(enum="NOOP__COMMENT", name="#",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
+    OnArg(
+        // Called after the first argument was captured, and now
+        // on the second argument.
+        LOG(":: export env ");
+        LOG(global_arg_cached);
+        LOG(" as ");
+        LOGLN(global_arg);
+        global_err = setenv(global_arg_cached, global_arg, 1);
 
-    // allow for shebang headers.
-    WithNamedStep(enum="NOOP__SHEBANG", name="#!",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+        // Doesn't make sense to assign new values to the same name.
+        global_cmd = COMMAND_INDEX__ERR;
     )
+)
 
 )

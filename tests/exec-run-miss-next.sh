@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# desc: exec with a real executable.
+# desc: exec must not let other commands after it run.
 # requires: +exec
 
 touch_exec="$( which touch )"
-"${FS}" exec [[${touch_exec}] a.txt] >out.txt 2>err.txt
+"${FS}" -c "exec [[${touch_exec}] a.txt] ; echo foo" >out.txt 2>err.txt
 res=$?
 
 if [ ${res} -ne 0 ] ; then
@@ -18,6 +18,7 @@ if [ ! -f a.txt ] ; then
     exit 1
 fi
 
+# Should not run the "echo foo" because exec stops this command.
 # -s : file exists and not empty
 if [ -s out.txt ] || [ -s err.txt ] ; then
     echo "Generated output to stdout or stderr"

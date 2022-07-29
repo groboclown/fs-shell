@@ -21,30 +21,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-AsOptional(command="noop",
+AsOptional(command="subcmd",
 
-    WithNamedStep(enum="NOOP__NAMED", name="noop",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
 
-    // Allow for # style comments... sort of.  Beware the ; and &&.
-    // # [blah] would work okay here.
-    WithNamedStep(enum="NOOP__COMMENT", name="#",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
+#include <stdlib.h>
+#include "args.h"
+#include "output.h"
+#include "globals.h"
+#include "command_runner.h"
 
-    // allow for shebang headers.
-    WithNamedStep(enum="NOOP__SHEBANG", name="#!",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+WithNamedStep(enum="SUBCMD", name="subcmd",
+
+    OnArg(
+        // Split the arguments.
+        shared_split_input_argv[2] = global_arg;
+        shared_split_arg_state = args_setup_tokenizer(
+            3, (char **) shared_split_input_argv,
+            // Any way to force this to not parse env?
+            1);
+        global_err = command_runner(shared_split_arg_state);
     )
+)
 
 )

@@ -21,30 +21,41 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-AsOptional(command="noop",
 
-    WithNamedStep(enum="NOOP__NAMED", name="noop",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+AsOptional(command="pwd",
+
+#include <unistd.h>
+#include "globals.h"
+#include "helpers.h"
+
+#ifndef PWD_BUFFER_SIZE
+#define PWD_BUFFER_SIZE 4000
+#endif
+
+WithNamedStep(enum="PWD", name="pwd",
+    OnInit(
+        char *pwd_str;
     )
 
-    // Allow for # style comments... sort of.  Beware the ; and &&.
-    // # [blah] would work okay here.
-    WithNamedStep(enum="NOOP__COMMENT", name="#",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+    OnArg(
+        // libc4, libc5, glibc allows the buffer argument to be NULL and size to be 0,
+        // which means the library will allocate the string to as big as necessary.
+        // And we'll need to free the memory.  But this doesn't seem well supported.
+        pwd_str = malloc(PWD_BUFFER_SIZE);
+        if (pwd_str == NULL) {
+            stderrP(helper_str__malloc_failed);
+            global_err = 1;
+        } else {
+            if (getcwd(pwd_str, PWD_BUFFER_SIZE) == NULL) {
+                global_err = 1;
+            } else if (strequal(global_arg, "-")) {
+                stdoutPLn(pwd_str);
+            } else {
+                setenv(global_arg, pwd_str, 1);
+            }
+            free(pwd_str);
+        }
     )
-
-    // allow for shebang headers.
-    WithNamedStep(enum="NOOP__SHEBANG", name="#!",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
+)
 
 )

@@ -39,27 +39,27 @@ SOFTWARE. */
 
 
 /* from cmd_chmod.h.in:31 */
-extern const char cmd_name_chmod_mode[];
+extern const char cmd_name_chmod__mode[];
 #define ENUM_LIST__CHMOD \
             /* from cmd_chmod.h.in:31 */ \
-            COMMAND_INDEX__CHMOD_MODE,
+            COMMAND_INDEX__CHMOD__MODE,
 #define VIRTUAL_ENUM_LIST__CHMOD \
             /* from cmd_chmod.h.in:44 */ \
-            COMMAND_INDEX__CHMOD_RUN,
+            COMMAND_INDEX__CHMOD__RUN,
 #define GLOBAL_VARDEF__CHMOD \
             /* from cmd_chmod.h.in:31 */ \
-            const char cmd_name_chmod_mode[] = "chmod";
+            const char cmd_name_chmod__mode[] = "chmod";
 #define INITIALIZE__CHMOD \
             /* from cmd_chmod.h.in:31 */ \
-            command_list_names[COMMAND_INDEX__CHMOD_MODE] = cmd_name_chmod_mode;
+            command_list_names[COMMAND_INDEX__CHMOD__MODE] = cmd_name_chmod__mode;
 #define STARTUP_CASE__CHMOD
 #define RUN_CASE__CHMOD \
-    case COMMAND_INDEX__CHMOD_MODE: \
+    case COMMAND_INDEX__CHMOD__MODE: \
         /* from cmd_chmod.h.in:31 */ \
             /* from cmd_chmod.h.in:32 */ \
         LOG(":: using mode "); \
         LOGLN(global_arg); \
-        global_cmd = COMMAND_INDEX__CHMOD_RUN; \
+        global_cmd = COMMAND_INDEX__CHMOD__RUN; \
         global_arg1_i = helper_arg_to_uint(global_arg, 8, 07777); \
         if (global_arg1_i < 0) { \
             LOG("::  - Bad base 8 number, or out of range\n"); \
@@ -67,7 +67,7 @@ extern const char cmd_name_chmod_mode[];
             global_err = 1; \
         } \
         break; \
-    case COMMAND_INDEX__CHMOD_RUN: \
+    case COMMAND_INDEX__CHMOD__RUN: \
         /* from cmd_chmod.h.in:44 */ \
             /* from cmd_chmod.h.in:45 */ \
         LOG(":: chmod on "); \

@@ -55,6 +55,8 @@ enum ArgumentDesc {
 //   The "save count" relates to the commands that need to hold on to
 //   the memory.
 #ifndef PARSED_ARG_SIZE
+//   With subcmd + exec + spawn usage, this may need to be bigger.
+//   However, increasing this means adjusting tests.
 #define PARSED_ARG_SIZE    1000
 #endif
 #ifndef PARSED_ARG_SAVE_COUNT

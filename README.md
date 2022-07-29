@@ -1,12 +1,12 @@
 # Precision Shell (presh)
 
-[![Build](https://github.com/groboclown/pre-shell/actions/workflows/build.yml/badge.svg)](https://github.com/groboclown/pre-shell/actions/workflows/build.yml)
+[![Build](https://github.com/groboclown/precision-shell/actions/workflows/build.yml/badge.svg)](https://github.com/groboclown/precision-shell/actions/workflows/build.yml)
 
 ## Custom Built Shell With Only What You Need
 
 Sometimes, you don't need or want a full fledged shell.  You just have a few things that you need to do, and allowing more is a security issue.
 
-`presh` offers a [few commands and shell syntax](#what-it-does), and gives you the flexibility to select which ones to compile, which can make the executable smaller and provide extra security by not enabling commands that don't need to be run.
+`presh` offers a [few commands and shell syntax](#what-it-does), and gives you the flexibility to select which ones to compile, which can make the executable smaller and provide extra security by not enabling commands that don't need to be run.  It's not POSIX conformant, and doesn't try to be.
 
 The tool has two goals - provide just enough commands for what you need to do, and make it small.
 
@@ -18,7 +18,7 @@ Last build size:
   * musl (Alpine): 21,944 bytes
   * dietlibc (Alpine): 13,256 bytes
 * Minimal build:
-  * glibc: 819,656 bytes
+  * glibc: 823,752 bytes
   * glibc (Arch): 778,280 bytes
   * musl (Alpine): 21,944 bytes
   * dietlibc (Alpine): 17,352 bytes
@@ -43,8 +43,13 @@ These file sizes are *statically compiled*, so they don't have any external depe
 The shell supports these commands:
 
 * [version](#version) - prints the current version (cannot be disabled).
-* [noop](#noop) - do nothing.
+* [noop](#noop) - do nothing.  The comment command.
 * [echo](#echo) - send text to `stdout`.
+* [?:](#conditional-command) - run a command conditionally based on the error result of another.
+* [subcmd](#subcmd) - run an argument as a complete precision shell command.
+* [exit](#exit) - exits the command (or sub-command) with an exit code.
+* [cd](#cd) - change current working directory.
+* [pwd](#pwd) - display current working directory, or store it in an environment variable.
 * [fmode](#fmode) - set the octal file mode for other commands.
 * [rm](#rm) - remove files.
 * [rmdir](#rmdir) - remove empty directories.
@@ -61,10 +66,15 @@ The shell supports these commands:
 * [touch](#touch) - <strike>Update the access and modification times of each file to the current time, or,</strike> if a file does not exist, it is created empty.
 * [trunc](#trunc) - Sets the file length to 0, and if the file does not exist, creates it.
 * [dup-r, dup-w, dup-a](#dup) - duplicates a file to a file descriptor for the remaining commands in this execution.
+* [export](#export) - export an environment variable + value into the running process and to-be-run child processes.
 * [signal .. wait](#signal-wait) - wait for an OS signal before continuing.
 * [exec](#exec) - switch execution to a new process.
+* [spawn](#spawn) - launch a new process in the background.
+* [wait-pid](#wait-pid) - wait for a process started by `spawn` to end.
+* [kill-pid](#kill-pid) - send a signal to a process.
 
 It also supports:
+* [Embedded Quoting](#command-parsing) by using the `[` and `]` symbols to allow easy deep quotes, like `exec [/usr/bin/echo [from native echo]]`
 * [Chaining commands](#command-chaining) together with `&&` and `;` (cannot be disabled).
 * [Standard script argument flag](#standard-script-flag) - if passed with the arguments `-c "commands"`, then the shell will parse the commands argument into individual commands (cannot be disabled).
 * [Script files](#script-files) - as an argument if used with `-f script-file-name`.
@@ -89,16 +99,12 @@ RUN echo Startup \
 
 ## What It Doesn't Do
 
-* List files.
+* List files or file details.
 * Copy files.
-* Process controls.
 * Report detailed error messages.
 * Change file timestamps.
-* Change current directory.
 * Provide splat pattern replacements.
-* Alter environment variables.
-* Flow control (if logic and loops) outside of early exit due to prior errors.
-* Background jobs or job control.
+* Looping
 * Anything with the network.
 * Tell you how to use it.  That's what this document is for.
 
@@ -116,15 +122,13 @@ See [sample.Dockerfile](sample.Dockerfile) for an example of using it with Docke
 
 Because of the goals for the shell, no compiled version is distributed.  You're expected to build it from source yourself.
 
-You can build it directly and directly set the included commands:
+You can build it directly and set the included commands:
 
 ```bash
 make "COMMAND_FLAGS=-DUSE_CMD_CHMOD -DUSE_STREAMING_INPUT"
 ```
 
-For each command, you use the flag `USE_CMD_(flag name)` (with a few odd ones).  The flag name is in all capital letters with an underscore (`_`) in place of a hyphen (`-`).  A complete list of flags is in the [`Makefile.command-flags`](Makefile.command-flags) file.
-
-The `-DUSE_STREAMING_INPUT=1` turns on the special streaming input mode, which allows for reading scripts from stdin or a file.
+Flags are split into command flags and usage flags.  Each [command](#help) in this document also includes the flag to enable it in the compiled executable.  A complete list of flags is in the [`Makefile.command-flags`](Makefile.command-flags) file.
 
 You can use some built-in command flag groups:
 
@@ -161,8 +165,23 @@ Prints the version information to stdout.  Any additional arguments generates an
 
 **Usage**: `noop [arg1 [arg2 ...]]`
 
+**Usage**: `# [Some comment text.  Put inside quoting to protect against && and ;]`
 
-Does nothing and ignores all arguments after it.
+**Usage**: `#! /shebang/format/presh -f`
+
+Does nothing and ignores all arguments after it.  When used as a comment, it's best to enclose the comment inside quotes to protect against `&&` and `;`, which the shell will interpret as an end-of-command.
+
+The noop can also be used to mask a file start shebang (`#!`) marker.  To work with presh, the precise format will need a space after the shebang mark, and include the `-f` argument to have the script be interpreted as a file.  This mode requires the [stream input flag](#script-files).
+
+**Example 1:**
+
+A script file.
+
+```bash
+#! /usr/bin/presh -f
+
+echo [This is a script file.]
+```
 
 ### echo
 
@@ -171,6 +190,97 @@ Does nothing and ignores all arguments after it.
 **Usage**: `echo [str1 [str2 ...]]`
 
 Sends to `stdout` each argument, one per line.  To have a multi-word statement on a single line, it must be passed as a single argument; see (Command Parsing)[#command-parsing] for details.
+
+# Conditional Command
+
+**Compile flag**: `-DUSE_CMD_CONDITIONAL`
+
+**Usage**: `?: (conditional cmd) (if successful) [if failure]`
+
+Runs the first argument as a full presh command, as though it was run through [`subcmd`](#subcmd).  If the exit code is zero, then the second argument is run as a full presh command).  If the first argument fails, then the third argument runs, or is skipped if it isn't given.
+
+
+**Example 1:**
+
+Test to make sure that [`chmod`](#chmod) correctly makes things not-writable.
+
+```bash
+$ presh -c "\
+  touch /tmp/file && \
+  chmod 000 /tmp/file && \
+  ?: [touch /tmp/file] \
+      [echo [chmod is dumb]] \
+      [echo [chmod works]]"
+ERROR touch: /tmp/file
+chmod works
+```
+
+**Example 2:**
+
+Because precision shell [does not support `||` chaining](#chaining-commands), this can be simulated by using the conditional operation with the [`noop`](#noop) command.
+
+```bash
+presh -c "\
+  dup 2 /dev/null ;
+  ?: [touch [/usr/bin/check-config my-config.rc]] \
+      noop \
+      [exec /usr/bin/generate-default-config my-config.rc]
+  "
+```
+
+### subcmd
+
+**Compile flag**: `-DUSE_CMD_SUBCMD`
+
+**Usage**: `subcmd [command as an argument [command ...]]`
+
+Runs each argument as a whole command.
+
+**Example:**
+
+```bash
+presh -c "\
+  touch /tmp/file && \
+  subcmd [\
+    ln-s /tmp/file /tmp/foo && \
+    ln-s /tmp/file /tmp/bar \
+  ] ; \
+  echo done"
+```
+
+### exit
+
+**Compile flag**: `-DUSE_CMD_EXIT`
+
+**Usage**: `exit (exit code)`
+
+Quits the execution of the current command context with an exit code, and no other commands are parsed.  If the exit is within a sub-command, then the sub command exits.
+
+**Example:**
+
+```bash
+presh -c "subcmd [exit 1] && echo [should not run]"
+```
+
+### cd
+
+**Compile flag**: `-DUSE_CMD_CD`
+
+**Usage**: `cd (directory)`
+
+Changes the current directory.  Useful for relative paths when running file commands, or when launching an executable to run inside a specific directory.
+
+### pwd
+
+**Compile flag**: `-DUSE_CMD_PWD`
+
+**Usage**: `pwd -`
+
+**Usage**: `pwd (env variable name)`
+
+When used with the argument `-`, the current working directory is written to stdout on its own line.  Otherwise, the environment variable name argument has the current working directory path stored in its value.
+
+Multiple arguments can be given, where the same rules apply for each argument.
 
 ### rm
 
@@ -414,6 +524,14 @@ presh -c "dup-w 1 contents.txt \
     && exec /usr/sbin/sort"
 ```
 
+### export
+
+**Compile flag**: `-DUSE_CMD_EXPORT`
+
+**Usage**: `export (ENV_NAME) (env value)`
+
+Export an environment variable + value into the running process and to-be-run child processes.
+
 
 ### signal-wait
 
@@ -437,15 +555,112 @@ This will cause the shell to ignore SIGINT (2, usually sent by a ctrl-c input), 
 
 **Compile flag**: `-DUSE_CMD_TRUNC`
 
-**Usage**: `exec (cmd) [arg1 [arg2 ...]]`
+**Usage**: `exec (quoted command to run)`
 
-Reads the remaining arguments (even `;` and `&&`, thus it ignores command chaining), and replaces the current process with the new one.  If the command argument is not given, then this fails.
+Parses the first argument using the [presh quoting rules](#command-parsing) and transfers execution to the command.  The first value extracted is the full path to the executable to run, and the rest of the values are passed as arguments.  If the executable exists and is executable, then presh will not run any more commands.
 
 Commands must be given in the full path; it doesn't look at any environment variable like `PATH`, even with the [environment variable parsing](#environment-variables) enabled.
 
+If the command file does not exist or is not executable, then the next argument will be tried to run.  If none of them can be run, then the `exec` command generates an error.  Note that if the called command can run but generates an error, presh doesn't have control at that point and will not run anything else.
+
+Because of how `exec` works, trailing the command with [`&&`](#chaining-commands) will never cause the following command to run.  This is because the only way `exec` will allow `presh` to run the next command is if it encountered an error attempting to launch the new process.
+
+**Example 1:**
+
+Report the date and time to a file, where the date time tool may be located in several locations, not known ahead of time.  This uses [`dup-w`](#dup-r-dup-w-dup-a) to cause the stdout from the executed command to be sent to the `/etc/time.txt` file, and if no date program is found, the message "unknown date" is written instead.
+
+```bash
+presh -c "dup-w 1 /etc/time.txt && exec [/bin/date] [/usr/bin/date] [/sbin/date] ; echo [unknown date]"
+```
+
+**Example 2:**
+
+Runs the native copy command to copy files with spaces in their names.  This shows how the embedded quoting makes it much easier to read.
+
+```bash
+presh -c "exec [/usr/bin/cp [source file.txt] [target file.txt]]"
+```
+
+### spawn
+
+**Compile flag**: `-DUSE_CMD_SPAWN`
+
+**Usage**: `spawn (quoted command) [env for pid]`
+
+Launch a new process in the background.  If the second argument is given, then the launched PID is stored in that value and exported to the environment variables.
+
+**Example 1:**
+
+Launch one command in the background and switch to a different command in the foreground.
+
+```bash
+presh -c "\
+  spawn [/usr/bin/httpd -c /etc/local.config] && \
+  exec [/usr/bin/tail -F /var/log/httpd/error.log]"
+```
+
+**Example 2:**
+
+With [environment variable parsing](#environment-variables) enabled, commands can spawn, wait for spawned processes to finish, and kill them.
+
+```bash
+presh -c "\
+    spawn [/usr/bin/sleep 10000] FOREVER && \
+    spawn [/usr/bin/sleep 10] TEN && \
+    spawn [/usr/bin/sleep 3] THREE &&\
+    echo [Spawned \${FOREVER} then \${TEN} then \${THREE}] ; \
+    wait-pid >FIRST ; \
+    echo [\${FIRST} just completed.] ;
+    wait-pid >SECOND ; \
+    echo [\${SECOND} just completed.] ;
+    kill-pid 15 \${FOREVER}"
+```
+
+### wait-pid
+
+**Compile flag**: `-DUSE_CMD_WAIT_PID`
+
+**Usage**: `wait-pid (pid number) [*(env name)]`
+
+**Usage**: `wait-pid >(env name)`
+
+**Usage**: `wait-pid >(env name) [*(env name)]`
+
+If passed with a numeric argument, it waits for the PID with that number to finish running.  If passed with an argument that starts with `>`, then the command waits for the next child to finish, and stores its PID in the environment variable with the name after the `>`.
+
+Multiple PID or `>ENV` arguments can be given, and the command will wait for each one to complete.  If a follow up argument in the form `*(ENV NAME)` is given, then the exit code from the process is stored in the given environment variable.
+
+**Example 1:**
+
+wait-pid + spawn + exit can be used together to create the equivalent of a normal shell's command execution.
+
+In this example, because the environment variables REQUEST_PID and REQUEST_EXIT might have a chance of being already set, the variable replacement is escaped with an extra `$` in order to prevent the outer string parsing from replacing the value early.
+
+```bash
+presh -c "\
+  ?: \
+    [spawn [/usr/bin/process-request] REQUEST_PID] \
+    [ \
+      wait-pid \$\${REQUEST_PID} *REQUEST_EXIT && \
+      exit \$\${REQUEST_EXIT}
+    ] \
+    [exit 1] \
+  "
+```
+
+### kill-pid
+
+**Compile flag**: `-DUSE_CMD_KILL_PID`
+
+**Usage**: `kill-pid (signal) [pid 1 [pid 2 ...]]`
+
+Sends the signal number in the first argument to the processes in the following arguments.
+
 ### Chaining Commands
 
-Like most shells, you can chain commands together with `&&` and `;`.  `&&` stops the execution if the previous command failed and allows another command after it; and `;` resets the error count to 0 and allows another command to follow it.  If a new line is encountered, that acts like a `;`.
+Like most shells, you can chain commands together with `&&` and `;`.  `&&` stops the execution if the previous command failed and allows another command after it; and `;` resets the error count to 0 and allows another command to follow it.  If a new line is encountered, that acts like a `;`.  The common shell `||` chain (run if non-zero error code) is not supported.
+
+A [future feature](https://github.com/groboclown/precision-shell/issues/14) may allow changing the newline behavior via a compile flag.
 
 ```bash
 $ ls
@@ -462,21 +677,6 @@ $ ./presh -c "echo abc \
 echo def"
 abc
 def
-```
-
-The `exec` command, however, ignores the chain, and passes all arguments to the requested command:
-
-```bash
-$ ./presh -c "echo abc ; echo def"
-abc
-def
-# Use the "which" command to find where the echo command is located
-# on the path.  Some systems have this under /usr/sbin/echo.
-$ ./presh -c "$( which echo ) abc ; echo def"
-ERROR /usr/sbin/echo: abc
-def
-$ ./presh -c "exec $( which echo ) abc ; echo def"
-abc ; echo def
 ```
 
 ### Environment Variables
@@ -526,6 +726,8 @@ If you use the input-enabled build, then you can use these additional forms of t
 Some commands, like [`ln-s`](#ln-s), require an exact number of arguments.  Unless this flag is set, using the command with just one argument will not cause a failure.  With this flag, `presh` will generate an error.
 
 ### Passing Commands from stdin
+
+**Compile flag**: `-DUSE_STREAMING_INPUT`
 
 If you use the input-enabled build, then you can pass the argument `-` to have the tool read commands from stdin.
 

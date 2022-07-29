@@ -33,23 +33,54 @@ SOFTWARE.
 
 
 
+    // Allow for # style comments... sort of.  Beware the ; and &&.
+    // # [blah] would work okay here.
+
+    // allow for shebang headers.
+
 /* from cmd_noop.h.in:26 */
-extern const char cmd_name_noop[];
+extern const char cmd_name_noop__named[];/* from cmd_noop.h.in:35 */
+extern const char cmd_name_noop__comment[];/* from cmd_noop.h.in:43 */
+extern const char cmd_name_noop__shebang[];
 #define ENUM_LIST__NOOP \
             /* from cmd_noop.h.in:26 */ \
-            COMMAND_INDEX__NOOP,
+            COMMAND_INDEX__NOOP__NAMED, \
+            /* from cmd_noop.h.in:35 */ \
+            COMMAND_INDEX__NOOP__COMMENT, \
+            /* from cmd_noop.h.in:43 */ \
+            COMMAND_INDEX__NOOP__SHEBANG,
 #define VIRTUAL_ENUM_LIST__NOOP
 #define GLOBAL_VARDEF__NOOP \
             /* from cmd_noop.h.in:26 */ \
-            const char cmd_name_noop[] = "noop";
+            const char cmd_name_noop__named[] = "noop"; \
+            /* from cmd_noop.h.in:35 */ \
+            const char cmd_name_noop__comment[] = "#"; \
+            /* from cmd_noop.h.in:43 */ \
+            const char cmd_name_noop__shebang[] = "#!";
 #define INITIALIZE__NOOP \
             /* from cmd_noop.h.in:26 */ \
-            command_list_names[COMMAND_INDEX__NOOP] = cmd_name_noop;
+            command_list_names[COMMAND_INDEX__NOOP__NAMED] = cmd_name_noop__named; \
+            /* from cmd_noop.h.in:35 */ \
+            command_list_names[COMMAND_INDEX__NOOP__COMMENT] = cmd_name_noop__comment; \
+            /* from cmd_noop.h.in:43 */ \
+            command_list_names[COMMAND_INDEX__NOOP__SHEBANG] = cmd_name_noop__shebang;
 #define STARTUP_CASE__NOOP
 #define RUN_CASE__NOOP \
-    case COMMAND_INDEX__NOOP: \
+    case COMMAND_INDEX__NOOP__NAMED: \
         /* from cmd_noop.h.in:26 */ \
             /* from cmd_noop.h.in:27 */ \
+            LOG(":: ignore"); \
+            LOGLN(global_arg); \
+        break; \
+    case COMMAND_INDEX__NOOP__COMMENT: \
+        /* from cmd_noop.h.in:35 */ \
+            /* from cmd_noop.h.in:36 */ \
+            LOG(":: ignore"); \
+            LOGLN(global_arg); \
+        break; \
+    case COMMAND_INDEX__NOOP__SHEBANG: \
+        /* from cmd_noop.h.in:43 */ \
+            /* from cmd_noop.h.in:44 */ \
             LOG(":: ignore"); \
             LOGLN(global_arg); \
         break;

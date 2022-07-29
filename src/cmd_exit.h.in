@@ -21,30 +21,32 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-AsOptional(command="noop",
+AsOptional(command="exit",
 
-    WithNamedStep(enum="NOOP__NAMED", name="noop",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
 
-    // Allow for # style comments... sort of.  Beware the ; and &&.
-    // # [blah] would work okay here.
-    WithNamedStep(enum="NOOP__COMMENT", name="#",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
-    )
+// Exec takes a single argument and parses it into arguments using the
+// input_loader.
 
-    // allow for shebang headers.
-    WithNamedStep(enum="NOOP__SHEBANG", name="#!",
-        OnArg(
-            LOG(":: ignore");
-            LOGLN(global_arg);
-        )
+#include "args.h"
+#include "output.h"
+#include "globals.h"
+
+
+WithNamedStep(enum="EXIT", name="exit",
+    RequiresAnotherArg()
+
+    OnArg(
+        // An argument is required.
+        global_err = helper_arg_to_uint(global_arg, 10, 0xff);
+        if (global_arg1_i < 0) {
+            LOG("::  - Bad exit code, or out of range\n");
+            global_cmd = COMMAND_INDEX__ERR;
+            global_err = 1;
+        }
+
+        // Return; do not allow more commands to run.
+        return global_err;
     )
+)
 
 )
